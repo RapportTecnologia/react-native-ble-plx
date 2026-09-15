@@ -848,6 +848,55 @@ export interface BleModuleInterface {
    */
   logLevel(): Promise<keyof typeof LogLevel>
 
+  // Peripheral mode (GATT server + advertiser)
+
+  /**
+   * Starts a peripheral GATT server and advertiser.
+   * @private
+   */
+  startPeripheral(config: {
+    serviceUuid: UUID
+    txCharUuid: UUID
+    rxCharUuid: UUID
+    advertiseMode?: 'lowLatency' | 'balanced' | 'lowPower'
+    deviceName?: string | null
+  }): Promise<void>
+
+  /**
+   * Stops the peripheral GATT server and advertiser.
+   * @private
+   */
+  stopPeripheral(): Promise<void>
+
+  /**
+   * Notifies a connected central on a peripheral characteristic.
+   * @private
+   */
+  notifyPeripheralCharacteristic(
+    deviceIdentifier: DeviceId,
+    serviceUUID: UUID,
+    characteristicUUID: UUID,
+    valueBase64: Base64
+  ): Promise<void>
+
+  /**
+   * Cancels a peripheral connection to a central.
+   * @private
+   */
+  cancelPeripheralConnection(deviceIdentifier: DeviceId): Promise<void>
+
+  /**
+   * Returns the list of centrals connected to the peripheral server.
+   * @private
+   */
+  connectedPeripherals(): Promise<Array<NativeDevice>>
+
+  /**
+   * Returns the negotiated MTU for a connected central.
+   * @private
+   */
+  peripheralMTU(deviceIdentifier: DeviceId): Promise<number>
+
   // Events
 
   /**
@@ -880,6 +929,42 @@ export interface BleModuleInterface {
    * @private
    */
   DisconnectionEvent: string
+
+  /**
+   * A central connected to the peripheral GATT server.
+   * @private
+   */
+  PeripheralCentralConnectedEvent: string
+
+  /**
+   * A central disconnected from the peripheral GATT server.
+   * @private
+   */
+  PeripheralCentralDisconnectedEvent: string
+
+  /**
+   * A central wrote to a peripheral characteristic.
+   * @private
+   */
+  PeripheralWriteEvent: string
+
+  /**
+   * MTU changed for a connected central.
+   * @private
+   */
+  PeripheralMtuChangedEvent: string
+
+  /**
+   * Notification subscription state changed for a central.
+   * @private
+   */
+  PeripheralSubscriptionChangedEvent: string
+
+  /**
+   * Peripheral server error.
+   * @private
+   */
+  PeripheralErrorEvent: string
 }
 
 /**

@@ -108,11 +108,23 @@ beforeEach(() => {
     writeDescriptorForDevice: jest.fn(),
     requestMTUForDevice: jest.fn().mockResolvedValue(createMockDevice({ mtu: 512 })),
     requestConnectionPriorityForDevice: jest.fn().mockResolvedValue(createMockDevice()),
+    startPeripheral: jest.fn(),
+    stopPeripheral: jest.fn(),
+    notifyPeripheralCharacteristic: jest.fn(),
+    cancelPeripheralConnection: jest.fn(),
+    connectedPeripherals: jest.fn(),
+    peripheralMTU: jest.fn(),
     ScanEvent: 'scan_event',
     ReadEvent: 'read_event',
     StateChangeEvent: 'state_change_event',
     RestoreStateEvent: 'restore_state_event',
-    DisconnectionEvent: 'disconnection_event'
+    DisconnectionEvent: 'disconnection_event',
+    PeripheralCentralConnectedEvent: 'peripheral_central_connected',
+    PeripheralCentralDisconnectedEvent: 'peripheral_central_disconnected',
+    PeripheralWriteEvent: 'peripheral_write',
+    PeripheralMtuChangedEvent: 'peripheral_mtu_changed',
+    PeripheralSubscriptionChangedEvent: 'peripheral_subscription_changed',
+    PeripheralErrorEvent: 'peripheral_error'
   }
   bleManager = new BleManager({
     restoreStateIdentifier: 'identifier',
@@ -677,4 +689,109 @@ test('BleManager isBackgroundModeEnabled calls native module', async () => {
 
   expect(Native.BleModule.isBackgroundModeEnabled).toBeCalled()
   expect(result).toBe(true)
+})
+
+// Peripheral mode tests -------------------------------------------------------------------------------------------
+
+test('BleManager startPeripheral calls native module', async () => {
+  Native.BleModule.startPeripheral = jest.fn().mockResolvedValue(undefined)
+
+  const config = {
+    serviceUuid: '6E400001-B5A3-F393-E0A9-E50E24DCCA9E',
+    txCharUuid: '6E400002-B5A3-F393-E0A9-E50E24DCCA9E',
+    rxCharUuid: '6E400003-B5A3-F393-E0A9-E50E24DCCA9E',
+    advertiseMode: 'balanced'
+  }
+  await bleManager.startPeripheral(config)
+
+  expect(Native.BleModule.startPeripheral).toBeCalledWith(config)
+})
+
+test('BleManager stopPeripheral calls native module', async () => {
+  Native.BleModule.stopPeripheral = jest.fn().mockResolvedValue(undefined)
+
+  await bleManager.stopPeripheral()
+
+  expect(Native.BleModule.stopPeripheral).toBeCalled()
+})
+
+test('BleManager notifyPeripheralCharacteristic calls native module', async () => {
+  Native.BleModule.notifyPeripheralCharacteristic = jest.fn().mockResolvedValue(undefined)
+
+  await bleManager.notifyPeripheralCharacteristic(
+    'aa:bb:cc:dd:ee:ff',
+    '6E400001-B5A3-F393-E0A9-E50E24DCCA9E',
+    '6E400003-B5A3-F393-E0A9-E50E24DCCA9E',
+    'base64value'
+  )
+
+  expect(Native.BleModule.notifyPeripheralCharacteristic).toBeCalledWith(
+    'aa:bb:cc:dd:ee:ff',
+    '6E400001-B5A3-F393-E0A9-E50E24DCCA9E',
+    '6E400003-B5A3-F393-E0A9-E50E24DCCA9E',
+    'base64value'
+  )
+})
+
+test('BleManager cancelPeripheralConnection calls native module', async () => {
+  Native.BleModule.cancelPeripheralConnection = jest.fn().mockResolvedValue(undefined)
+
+  await bleManager.cancelPeripheralConnection('aa:bb:cc:dd:ee:ff')
+
+  expect(Native.BleModule.cancelPeripheralConnection).toBeCalledWith('aa:bb:cc:dd:ee:ff')
+})
+
+test('BleManager connectedPeripherals returns Device objects', async () => {
+  Native.BleModule.connectedPeripherals = jest
+    .fn()
+    .mockResolvedValue([createMockDevice({ id: 'aa:bb:cc:dd:ee:ff', name: 'Central A' })])
+
+  const devices = await bleManager.connectedPeripherals()
+
+  expect(Native.BleModule.connectedPeripherals).toBeCalled()
+  expect(devices.length).toBe(1)
+  expect(devices[0]).toBeInstanceOf(Device)
+  expect(devices[0].id).toBe('aa:bb:cc:dd:ee:ff')
+})
+
+test('BleManager peripheralMTU calls native module', async () => {
+  Native.BleModule.peripheralMTU = jest.fn().mockResolvedValue(185)
+
+  const mtu = await bleManager.peripheralMTU('aa:bb:cc:dd:ee:ff')
+
+  expect(Native.BleModule.peripheralMTU).toBeCalledWith('aa:bb:cc:dd:ee:ff')
+  expect(mtu).toBe(185)
+})
+
+test('BleManager onPeripheralCentralConnected registers listener', () => {
+  const listener = jest.fn()
+  const subscription = bleManager.onPeripheralCentralConnected(listener)
+
+  expect(subscription).toBeDefined()
+  expect(subscription.remove).toBeDefined()
+
+  Native.BleModule.emit('peripheral_central_connected', { deviceId: 'aa:bb:cc:dd:ee:ff' })
+  expect(listener).toBeCalledWith({ deviceId: 'aa:bb:cc:dd:ee:ff' })
+
+  subscription.remove()
+})
+
+test('BleManager onPeripheralWrite registers listener', () => {
+  const listener = jest.fn()
+  const subscription = bleManager.onPeripheralWrite(listener)
+
+  Native.BleModule.emit('peripheral_write', {
+    deviceId: 'aa:bb:cc:dd:ee:ff',
+    serviceUUID: '6E400001-B5A3-F393-E0A9-E50E24DCCA9E',
+    characteristicUUID: '6E400002-B5A3-F393-E0A9-E50E24DCCA9E',
+    value: 'base64value'
+  })
+  expect(listener).toBeCalledWith({
+    deviceId: 'aa:bb:cc:dd:ee:ff',
+    serviceUUID: '6E400001-B5A3-F393-E0A9-E50E24DCCA9E',
+    characteristicUUID: '6E400002-B5A3-F393-E0A9-E50E24DCCA9E',
+    value: 'base64value'
+  })
+
+  subscription.remove()
 })

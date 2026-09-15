@@ -1471,4 +1471,116 @@ export class BleManager {
     }
     return this._callPromise(BleModule.isBackgroundModeEnabled())
   }
+
+  // Mark: Peripheral mode (GATT server + advertiser) ---------------------------------------------------------------
+
+  /**
+   * Start a BLE peripheral: open a GATT server and begin advertising the given service.
+   *
+   * The GATT server exposes two characteristics on the provided service UUID:
+   * - txCharUuid: writable by remote centrals (incoming data for this device).
+   * - rxCharUuid: notifiable to remote centrals (outgoing data from this device).
+   *
+   * This is intended for mesh-style scenarios where every device must be both
+   * central and peripheral. Android only.
+   */
+  async startPeripheral(config: {
+    serviceUuid: UUID
+    txCharUuid: UUID
+    rxCharUuid: UUID
+    advertiseMode?: 'lowLatency' | 'balanced' | 'lowPower'
+    deviceName?: string | null
+  }): Promise<void> {
+    return this._callPromise(BleModule.startPeripheral(config))
+  }
+
+  /**
+   * Stop the BLE peripheral GATT server and advertiser. Android only.
+   */
+  async stopPeripheral(): Promise<void> {
+    return this._callPromise(BleModule.stopPeripheral())
+  }
+
+  /**
+   * Notify a connected central on a peripheral characteristic. Android only.
+   */
+  async notifyPeripheralCharacteristic(
+    deviceIdentifier: DeviceId,
+    serviceUUID: UUID,
+    characteristicUUID: UUID,
+    valueBase64: Base64
+  ): Promise<void> {
+    return this._callPromise(
+      BleModule.notifyPeripheralCharacteristic(deviceIdentifier, serviceUUID, characteristicUUID, valueBase64)
+    )
+  }
+
+  /**
+   * Cancel a peripheral connection to a central. Android only.
+   */
+  async cancelPeripheralConnection(deviceIdentifier: DeviceId): Promise<void> {
+    return this._callPromise(BleModule.cancelPeripheralConnection(deviceIdentifier))
+  }
+
+  /**
+   * Return the centrals currently connected to the peripheral GATT server.
+   * Android only.
+   */
+  async connectedPeripherals(): Promise<Array<Device>> {
+    const nativeDevices = await this._callPromise(BleModule.connectedPeripherals())
+    return nativeDevices.map(nativeDevice => new Device(nativeDevice, this))
+  }
+
+  /**
+   * Return the negotiated MTU for a connected central. Android only.
+   */
+  async peripheralMTU(deviceIdentifier: DeviceId): Promise<number> {
+    return this._callPromise(BleModule.peripheralMTU(deviceIdentifier))
+  }
+
+  /**
+   * Listen for a central connecting to the peripheral GATT server.
+   */
+  onPeripheralCentralConnected(listener: (deviceId: DeviceId) => void): Subscription {
+    return this._eventEmitter.addListener(BleModule.PeripheralCentralConnectedEvent, listener)
+  }
+
+  /**
+   * Listen for a central disconnecting from the peripheral GATT server.
+   */
+  onPeripheralCentralDisconnected(listener: (deviceId: DeviceId) => void): Subscription {
+    return this._eventEmitter.addListener(BleModule.PeripheralCentralDisconnectedEvent, listener)
+  }
+
+  /**
+   * Listen for writes from a connected central on the peripheral TX characteristic.
+   */
+  onPeripheralWrite(
+    listener: (event: { deviceId: DeviceId; serviceUUID: UUID; characteristicUUID: UUID; value: Base64 }) => void
+  ): Subscription {
+    return this._eventEmitter.addListener(BleModule.PeripheralWriteEvent, listener)
+  }
+
+  /**
+   * Listen for MTU changes on a peripheral connection.
+   */
+  onPeripheralMtuChanged(listener: (event: { deviceId: DeviceId; mtu: number }) => void): Subscription {
+    return this._eventEmitter.addListener(BleModule.PeripheralMtuChangedEvent, listener)
+  }
+
+  /**
+   * Listen for notification subscription changes from a connected central.
+   */
+  onPeripheralSubscriptionChanged(
+    listener: (event: { deviceId: DeviceId; serviceUUID: UUID; characteristicUUID: UUID; subscribed: boolean }) => void
+  ): Subscription {
+    return this._eventEmitter.addListener(BleModule.PeripheralSubscriptionChangedEvent, listener)
+  }
+
+  /**
+   * Listen for peripheral server errors.
+   */
+  onPeripheralError(listener: (event: { message: string }) => void): Subscription {
+    return this._eventEmitter.addListener(BleModule.PeripheralErrorEvent, listener)
+  }
 }

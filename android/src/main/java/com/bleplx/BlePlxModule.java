@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 
 import com.bleplx.NativeBlePlxSpec;
 import com.bleplx.adapter.BleAdapter;
+import com.bleplx.peripheral.PeripheralServer;
 import com.bleplx.adapter.BleAdapterFactory;
 import com.bleplx.adapter.Characteristic;
 import com.bleplx.adapter.ConnectionOptions;
@@ -88,6 +89,7 @@ public class BlePlxModule extends NativeBlePlxSpec {
   private final ServiceToJsObjectConverter serviceConverter = new ServiceToJsObjectConverter();
 
   private BleAdapter bleAdapter;
+  private PeripheralServer peripheralServer;
 
   @Override
   protected Map<String, Object> getTypedExportedConstants() {
@@ -1136,6 +1138,79 @@ public class BlePlxModule extends NativeBlePlxSpec {
       }
     }
     return false;
+  }
+
+  // Mark: Peripheral (GATT server + advertiser) for BLE mesh -----------------
+
+  @ReactMethod
+  public void startPeripheral(@Nullable ReadableMap config, final Promise promise) {
+    if (peripheralServer == null) {
+      peripheralServer = new PeripheralServer(
+        reactContext,
+        new PeripheralServer.EventListener() {
+          @Override
+          public void onEvent(@NonNull String eventName, @NonNull WritableMap payload) {
+            try {
+              Event event = Event.valueOf(eventName + "Event");
+              sendEvent(event, payload);
+            } catch (IllegalArgumentException ignored) {
+              // Unknown event name, ignore.
+            }
+          }
+        }
+      );
+    }
+    peripheralServer.start(config, promise);
+  }
+
+  @ReactMethod
+  public void stopPeripheral(final Promise promise) {
+    if (peripheralServer != null) {
+      peripheralServer.stop(promise);
+      peripheralServer = null;
+    } else {
+      promise.resolve(null);
+    }
+  }
+
+  @ReactMethod
+  public void notifyPeripheralCharacteristic(final String deviceId,
+                                            final String serviceUuid,
+                                            final String characteristicUuid,
+                                            final String valueBase64,
+                                            final Promise promise) {
+    if (peripheralServer == null) {
+      promise.reject("PERIPHERAL_NOT_STARTED", "Peripheral server is not running");
+      return;
+    }
+    peripheralServer.notify(deviceId, valueBase64, promise);
+  }
+
+  @ReactMethod
+  public void cancelPeripheralConnection(final String deviceId, final Promise promise) {
+    if (peripheralServer == null) {
+      promise.resolve(null);
+      return;
+    }
+    peripheralServer.cancelConnection(deviceId, promise);
+  }
+
+  @ReactMethod
+  public void connectedPeripherals(final Promise promise) {
+    if (peripheralServer == null) {
+      promise.resolve(Arguments.createArray());
+      return;
+    }
+    peripheralServer.connectedCentrals(promise);
+  }
+
+  @ReactMethod
+  public void peripheralMTU(final String deviceId, final Promise promise) {
+    if (peripheralServer == null) {
+      promise.resolve(23);
+      return;
+    }
+    peripheralServer.mtu(deviceId, promise);
   }
 
   @ReactMethod

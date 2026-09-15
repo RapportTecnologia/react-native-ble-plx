@@ -30,6 +30,14 @@ type BackgroundModeOptions = {
   notificationText?: string
 }
 
+type PeripheralConfig = {
+  serviceUuid: UUID
+  txCharUuid: UUID
+  rxCharUuid: UUID
+  advertiseMode?: 'lowLatency' | 'balanced' | 'lowPower'
+  deviceName?: string | null
+}
+
 type NativeDevice = {
   id: DeviceId
   name: string | null
@@ -85,6 +93,12 @@ export type NativeBlePlxConstants = {
   StateChangeEvent: string
   RestoreStateEvent: string
   DisconnectionEvent: string
+  PeripheralCentralConnectedEvent: string
+  PeripheralCentralDisconnectedEvent: string
+  PeripheralWriteEvent: string
+  PeripheralMtuChangedEvent: string
+  PeripheralSubscriptionChangedEvent: string
+  PeripheralErrorEvent: string
 }
 
 export type RestorationStatus = {
@@ -249,6 +263,19 @@ export interface Spec extends TurboModule {
   cancelTransaction(transactionId: TransactionId): Promise<void>
   setLogLevel(logLevel: NativeLogLevel): Promise<NativeLogLevel | void>
   logLevel(): Promise<NativeLogLevel>
+
+  // Peripheral mode (GATT server + advertiser)
+  startPeripheral(config: PeripheralConfig): Promise<void>
+  stopPeripheral(): Promise<void>
+  notifyPeripheralCharacteristic(
+    deviceIdentifier: DeviceId,
+    serviceUUID: UUID,
+    characteristicUUID: UUID,
+    valueBase64: Base64
+  ): Promise<void>
+  cancelPeripheralConnection(deviceIdentifier: DeviceId): Promise<void>
+  connectedPeripherals(): Promise<Array<NativeDevice>>
+  peripheralMTU(deviceIdentifier: DeviceId): Promise<number>
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('BlePlx')
