@@ -95,7 +95,7 @@ public class BlePlxModule extends NativeBlePlxSpec {
   protected Map<String, Object> getTypedExportedConstants() {
     final Map<String, Object> constants = new HashMap<>();
     for (Event event : Event.values()) {
-      constants.put(event.name, event.name);
+      constants.put(event.name(), event.name);
     }
     return constants;
   }

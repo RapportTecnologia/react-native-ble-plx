@@ -15,7 +15,6 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.content.Context;
-import android.os.Build;
 import android.os.ParcelUuid;
 
 import androidx.annotation.NonNull;
@@ -191,13 +190,8 @@ public class PeripheralServer {
     }
 
     byte[] value = Base64Converter.decode(valueBase64);
-    boolean success;
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-      success = gattServer.notifyCharacteristicChanged(device, rxCharacteristic, false, value);
-    } else {
-      rxCharacteristic.setValue(value);
-      success = gattServer.notifyCharacteristicChanged(device, rxCharacteristic, false);
-    }
+    rxCharacteristic.setValue(value);
+    boolean success = gattServer.notifyCharacteristicChanged(device, rxCharacteristic, false);
     if (success) {
       promise.resolve(null);
     } else {
@@ -271,7 +265,7 @@ public class PeripheralServer {
 
       @Override
       public void onStartFailure(int errorCode) {
-        stop();
+        stop(null);
         Promise p;
         synchronized (lock) {
           p = startPromise;
@@ -348,7 +342,7 @@ public class PeripheralServer {
         p = startPromise;
       }
       if (status != BluetoothGatt.GATT_SUCCESS) {
-        stop();
+        stop(null);
         synchronized (lock) {
           startPromise = null;
         }

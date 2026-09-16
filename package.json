@@ -1,6 +1,6 @@
 {
   "name": "@sfourdrinier/react-native-ble-plx",
-  "version": "3.9.3",
+  "version": "3.10.0",
   "description": "React Native Bluetooth Low Energy library",
   "packageManager": "pnpm@10.14.0",
   "main": "lib/commonjs/index.js",
@@ -60,7 +60,7 @@
     "build:plugin": "tsc --build plugin",
     "clean:plugin": "expo-module clean plugin",
     "test:plugin": "NODE_PATH=./plugin/test-stubs jest --config plugin/jest.config.js",
-    "prepare": "pnpm clean:plugin && pnpm build:plugin",
+    "prepare": "npm run clean:plugin && npm run build:plugin",
     "lint:plugin": "eslint plugin/src/*"
   },
   "keywords": [
